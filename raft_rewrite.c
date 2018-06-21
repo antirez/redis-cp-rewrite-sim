@@ -3,8 +3,8 @@
 #include <time.h>
 
 #define NUM_INSTANCES 5
-#define SAVE_TIME 3
-#define MAX_LOG_LEN 10000000
+#define SAVE_TIME 3             /* RDB Save time in seconds. */
+#define MAX_LOG_LEN 1000000     /* Max log length triggering a rewrite. */
 
 struct instance {
     int leader;
@@ -33,6 +33,7 @@ void init(void) {
 
 int main(void) {
     long long time = 0, nomajority = 0;
+    long long max_delay = 0;
     init();
 
     while(1) {
@@ -101,7 +102,16 @@ int main(void) {
         for (int j = 0; j < NUM_INSTANCES; j++) {
             if (instances[j].rewrite_started == 0) majority++;
         }
-        if (majority < NUM_INSTANCES/2+1) nomajority++;
+        if (majority < NUM_INSTANCES/2+1) {
+            nomajority++;
+        } else {
+            static long long old_nomajority;
+            long long latency = nomajority-old_nomajority;
+            if (latency > max_delay) {
+                max_delay = latency;
+            }
+            old_nomajority = nomajority;
+        }
 
         /* Log some info about instances. */
         if (!(time % 1000000)) {
@@ -112,8 +122,9 @@ int main(void) {
                 printf("\n");
             }
 
-            printf("Not available %lld on a total of %lld time\n",
-                nomajority, time);
+            printf("Not available %lld on a total of %lld time "
+                   "(max latency spike %lld)\n",
+                nomajority, time, max_delay);
         }
     }
 }
