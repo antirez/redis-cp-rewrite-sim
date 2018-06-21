@@ -29,6 +29,7 @@ void init(void) {
         instances[j].log_len = 0;
         set_max_log_len(instances+j);
     }
+    srand(time(NULL));
 }
 
 int main(void) {
